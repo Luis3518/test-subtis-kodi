@@ -70,7 +70,22 @@ def search_subtitles(item):
     """
     log("=" * 60)
     log("STARTING SUBTITLE SEARCH")
-    log(f"Item data: {item}")
+    log(f"Item data222222: {item}")
+    
+    # Log ALL available VideoPlayer InfoLabels for debugging
+    log("=" * 60)
+    log("ALL AVAILABLE VIDEOPLAYER INFOLABELS:")
+    available_infolabels = [
+    'VideoPlayer.Title', 'VideoPlayer.OriginalTitle', 'VideoPlayer.Year', 'VideoPlayer.Country',
+    'VideoPlayer.Duration', 'VideoPlayer.IMDBNumber', 'VideoPlayer.UniqueID(imdb)', 'VideoPlayer.UniqueID(tmdb)', 'VideoPlayer.UniqueID(tvdb)',
+    'VideoPlayer.VideoResolution', 'VideoPlayer.FileName', 'VideoPlayer.FileExtension',
+    ]
+    
+    for label in available_infolabels:
+        value = xbmc.getInfoLabel(label)
+        if value:  # Solo mostrar los que tienen valor
+            log(f"  {label}: {value}")
+    log("=" * 60)
     
     subtitles_list = []
     
