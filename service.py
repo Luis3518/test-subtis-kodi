@@ -22,12 +22,10 @@ __language__ = __addon__.getLocalizedString
 __profile__ = xbmcvfs.translatePath(__addon__.getAddonInfo('profile'))
 __temp__ = xbmcvfs.translatePath(os.path.join(__profile__, 'temp', ''))
 
-# API Configuration
 SUBTIS_API_BASE = "https://api.subt.is/v1"
 
 
 def log(msg):
-    """Log a message to the Kodi log file"""
     xbmc.log(f"### SUBTIS ### {msg}", level=xbmc.LOGINFO)
 
 
@@ -76,9 +74,16 @@ def search_subtitles(item):
     
     subtitles_list = []
     
-    # Obtener el nombre de la película/serie
     title = item.get('title', '')
     log(f"Extracted title: '{title}'")
+    
+    # Log additional item data
+    imdb_id = item.get('imdb', '')
+    log(f"IMDb ID: '{imdb_id}'")
+    
+    file_size = item.get('file_size', 0)
+    log(f"File size (bytes): {file_size}")
+
     
     if not title:
         log("ERROR: No title found, cannot search")
@@ -261,6 +266,19 @@ def main():
         item['file_original_path'] = urllib.parse.unquote(
             xbmc.Player().getPlayingFile()
         )
+        item['imdb'] = xbmc.getInfoLabel("VideoPlayer.IMDBNumber")
+        
+        # Get file size in bytes
+        try:
+            playing_file = xbmc.Player().getPlayingFile()
+            if xbmcvfs.exists(playing_file):
+                stat = xbmcvfs.Stat(playing_file)
+                item['file_size'] = stat.st_size()
+            else:
+                item['file_size'] = 0
+        except Exception as e:
+            log(f"Could not get file size: {str(e)}")
+            item['file_size'] = 0
         
         if item['title'] == "":
             item['title'] = xbmc.getInfoLabel("VideoPlayer.Title")
@@ -272,6 +290,8 @@ def main():
         log(f"  - Episode: {item['episode']}")
         log(f"  - TV Show: {item['tvshow']}")
         log(f"  - File Path: {item['file_original_path']}")
+        log(f"  - IMDb ID: {item.get('imdb', 'N/A')}")
+        log(f"  - File Size: {item.get('file_size', 0)} bytes")
         
         # Buscar subtítulos
         subtitles_list = search_subtitles(item)
