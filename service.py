@@ -203,19 +203,32 @@ def download_subtitle(subtitle_id):
     Returns:
         List with the path to the downloaded subtitle file
     """
+    log("=" * 60)
+    log(f"DOWNLOADING SUBTITLE ID: {subtitle_id}")
+    
     # Crear el directorio temporal si no existe
     if not xbmcvfs.exists(__temp__):
         xbmcvfs.mkdirs(__temp__)
     
     # Construir la URL de descarga
     download_url = f"{SUBTIS_API_BASE}/subtitle/link/{subtitle_id}"
+    log(f"Download URL: {download_url}")
     
     try:
         req = urllib.request.Request(download_url)
         req.add_header('User-Agent', f'Kodi Subtis Addon/{__version__}')
         
         with urllib.request.urlopen(req, timeout=30) as response:
+            status_code = response.getcode()
+            log(f"Download response status code: {status_code}")
+            
             subtitle_content = response.read().decode('utf-8')
+            content_length = len(subtitle_content)
+            log(f"Downloaded content length: {content_length} characters")
+            
+            # Log primeras líneas del subtítulo para debug
+            first_lines = '\n'.join(subtitle_content.split('\n')[:5])
+            log(f"First lines of subtitle:\n{first_lines}")
         
         # Guardar el subtítulo en el directorio temporal
         subtitle_path = os.path.join(__temp__, f"subtis_{subtitle_id}.srt")
@@ -223,9 +236,13 @@ def download_subtitle(subtitle_id):
         with open(subtitle_path, 'w', encoding='utf-8') as f:
             f.write(subtitle_content)
         
+        log(f"Subtitle saved to: {subtitle_path}")
+        log("=" * 60)
         return [subtitle_path]
         
     except Exception as e:
+        log(f"ERROR downloading subtitle: {str(e)}")
+        log("=" * 60)
         return []
 
 
