@@ -50,12 +50,36 @@ def make_request(url):
         return None
 
 
-def search_subtitles(item):
+def make_request_with_status(url):
     """
-    Search for subtitles based on the video item information
+    Make an HTTP GET request to the specified URL and return data with status code
     
     Args:
-        item: Dictionary containing video information (title, year, season, episode, etc.)
+        url: The URL to request
+    
+    Returns:
+        Tuple (response_data, status_code) where response_data is dictionary or None
+    """
+    try:
+        req = urllib.request.Request(url)
+        req.add_header('User-Agent', f'Kodi Subtis Addon/{__version__}')
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            data = response.read()
+            status_code = response.getcode()
+            return json.loads(data.decode('utf-8')), status_code
+    except urllib.error.HTTPError as e:
+        return None, e.code
+    except:
+        return None, 0
+
+
+def search_subtitles(item):
+    """
+    Search for subtitles based on file size and file name
+    
+    Args:
+        item: Dictionary containing video information (file_size, file_name, etc.)
     
     Returns:
         List of subtitle results
@@ -78,53 +102,49 @@ def search_subtitles(item):
     log(f"File size (bytes): {file_size}")
 
     
-    if not title:
+    if not file_name or not file_size:
+        log("ERROR: File name or file size missing")
         return subtitles_list
     
-    # Codificar el nombre para la URL
-    encoded_title = urllib.parse.quote(title)
+    # Codificar el nombre del archivo para la URL
+    encoded_filename = urllib.parse.quote(file_name)
     
-    # Construir la URL de búsqueda de títulos
-    search_url = f"{SUBTIS_API_BASE}/titles/search/{encoded_title}"
+    # Construir la URL de búsqueda por file_size y file_name
+    search_url = f"{SUBTIS_API_BASE}/subtitle/file/name/{file_size}/{encoded_filename}"
+    log(f"Search URL: {search_url}")
     
     # Hacer la petición a la API
-    response_data = make_request(search_url)
+    response_data, status_code = make_request_with_status(search_url)
+    log(f"Response status code: {status_code}")
     
-    if not response_data:
+    if response_data:
+        log(f"Response data: {response_data}")
+    
+    if not response_data or status_code != 200:
+        log(f"No subtitles found or error occurred (status: {status_code})")
         return subtitles_list
     
-    # Obtener los resultados del JSON
-    results = response_data.get('results', [])
-    
-    if not results:
-        return subtitles_list
+    # El endpoint puede devolver un solo resultado o una lista
+    results = response_data if isinstance(response_data, list) else [response_data]
     
     # Procesar cada resultado
     for idx, result in enumerate(results):
-        subtitle_id = result.get('id')
-        title_name = result.get('title_name', 'Unknown')
-        title_name_spa = result.get('title_name_spa', title_name)
-        year = result.get('year', '')
-        rating = result.get('rating', 0)
-        title_type = result.get('type', 'movie')
-        
-        # Usar el nombre en español si está disponible
-        display_name = title_name_spa if title_name_spa else title_name
-        filename = f"{display_name} ({year})"
+        subtitle_id = result.get('id', '')
+        lang = result.get('lang', 'es')
+        downloads = result.get('downloads', 0)
         
         # Crear el ListItem para Kodi
         listitem = xbmcgui.ListItem(
-            label="Spanish",  # Idioma (subt.is parece ser principalmente español)
-            label2=filename
+            label=get_language_name(lang),
+            label2=file_name
         )
         
-        # Establecer la calificación (0-5)
-        # Convertir rating de 0-10 a 0-5
-        rating_5 = str(int(min(5, rating / 2)))
-        listitem.setArt({'icon': rating_5})
+        # Establecer rating basado en descargas (escala 0-5)
+        rating = min(5, downloads // 100) if downloads else 3
+        listitem.setArt({'icon': str(rating)})
         
         # Propiedades del subtítulo
-        listitem.setProperty("sync", "false")
+        listitem.setProperty("sync", "true")
         listitem.setProperty("hearing_imp", "false")
         
         # URL para descargar este subtítulo
@@ -132,6 +152,8 @@ def search_subtitles(item):
         
         subtitles_list.append((url, listitem, False))
     
+    log(f"Found {len(subtitles_list)} subtitle(s)")
+    log("=" * 60)
     return subtitles_list
 
 
