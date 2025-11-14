@@ -124,33 +124,48 @@ def search_subtitles(item):
         log(f"No subtitles found or error occurred (status: {status_code})")
         return subtitles_list
     
-    # El endpoint puede devolver un solo resultado o una lista
-    results = response_data if isinstance(response_data, list) else [response_data]
+    # Extraer información del subtítulo de la respuesta
+    # La respuesta tiene estructura: { 'title': {...}, 'subtitle': {...}, ... }
+    subtitle_data = response_data.get('subtitle', {})
+    title_data = response_data.get('title', {})
     
-    # Procesar cada resultado
-    for idx, result in enumerate(results):
-        subtitle_id = result.get('id', '')
-        lang = result.get('lang', 'es')
-        downloads = result.get('downloads', 0)
-        
-        # Crear el ListItem para Kodi
-        listitem = xbmcgui.ListItem(
-            label=get_language_name(lang),
-            label2=file_name
-        )
-        
-        # Establecer rating basado en descargas (escala 0-5)
-        rating = min(5, downloads // 100) if downloads else 3
-        listitem.setArt({'icon': str(rating)})
-        
-        # Propiedades del subtítulo
-        listitem.setProperty("sync", "true")
-        listitem.setProperty("hearing_imp", "false")
-        
-        # URL para descargar este subtítulo
-        url = f"plugin://{__scriptid__}/?action=download&id={subtitle_id}"
-        
-        subtitles_list.append((url, listitem, False))
+    if not subtitle_data:
+        log("No subtitle data found in response")
+        return subtitles_list
+    
+    # Extraer el ID del subtítulo (para descarga)
+    subtitle_id = subtitle_data.get('id')
+    if not subtitle_id:
+        log("No subtitle ID found")
+        return subtitles_list
+    
+    # Información adicional
+    subtitle_file_name = subtitle_data.get('subtitle_file_name', file_name)
+    queried_times = subtitle_data.get('queried_times', 0)
+    title_name = title_data.get('title_name', 'Unknown')
+    year = title_data.get('year', '')
+    rating = title_data.get('rating', 0)
+    
+    # Crear el ListItem para Kodi
+    display_label = f"{title_name} ({year})" if year else title_name
+    
+    listitem = xbmcgui.ListItem(
+        label="Spanish",
+        label2=display_label
+    )
+    
+    # Establecer rating (0-5 basado en rating de la película/show)
+    rating_5 = str(int(min(5, rating / 2)))
+    listitem.setArt({'icon': rating_5})
+    
+    # Propiedades del subtítulo
+    listitem.setProperty("sync", "true")
+    listitem.setProperty("hearing_imp", "false")
+    
+    # URL para descargar este subtítulo
+    url = f"plugin://{__scriptid__}/?action=download&id={subtitle_id}"
+    
+    subtitles_list.append((url, listitem, False))
     
     log(f"Found {len(subtitles_list)} subtitle(s)")
     log("=" * 60)
