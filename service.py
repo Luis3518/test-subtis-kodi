@@ -68,6 +68,9 @@ def search_subtitles(item):
     title = item.get('title', '')
     log(f"Title: '{title}'")
     
+    file_name = item.get('file_name', '')
+    log(f"File name: '{file_name}'")
+    
     imdb_id = item.get('imdb', '')
     log(f"IMDb ID: '{imdb_id}'")
     
@@ -220,6 +223,7 @@ def main():
             xbmc.Player().getPlayingFile()
         )
         item['imdb'] = xbmc.getInfoLabel("VideoPlayer.IMDBNumber")
+        item['file_name'] = xbmc.getInfoLabel("VideoPlayer.FileName")
         
         # Get file size in bytes
         try:
