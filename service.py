@@ -141,10 +141,8 @@ def search_subtitles(item):
     
     # Información adicional
     subtitle_file_name = subtitle_data.get('subtitle_file_name', file_name)
-    queried_times = subtitle_data.get('queried_times', 0)
     title_name = title_data.get('title_name', 'Unknown')
     year = title_data.get('year', '')
-    rating = title_data.get('rating', 0)
     
     # Crear el ListItem para Kodi
     display_label = f"{title_name} ({year})" if year else title_name
@@ -154,9 +152,8 @@ def search_subtitles(item):
         label2=display_label
     )
     
-    # Establecer rating (0-5 basado en rating de la película/show)
-    rating_5 = str(int(min(5, rating / 2)))
-    listitem.setArt({'icon': rating_5})
+    # Rating siempre en 0
+    listitem.setArt({'icon': '0'})
     
     # Propiedades del subtítulo
     listitem.setProperty("sync", "true")
