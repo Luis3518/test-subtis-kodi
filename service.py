@@ -245,7 +245,10 @@ def main():
             xbmc.Player().getPlayingFile()
         )
         item['imdb'] = xbmc.getInfoLabel("VideoPlayer.IMDBNumber")
-        item['file_name'] = xbmc.getInfoLabel("VideoPlayer.FileName")
+        
+        # Extraer el nombre del archivo desde la ruta completa
+        playing_file = xbmc.Player().getPlayingFile()
+        item['file_name'] = os.path.basename(playing_file)
         
         # Get file size in bytes
         try:
