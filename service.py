@@ -40,21 +40,13 @@ def make_request(url):
         Dictionary with the JSON response or None if error
     """
     try:
-        log(f"Making request to: {url}")
         req = urllib.request.Request(url)
         req.add_header('User-Agent', f'Kodi Subtis Addon/{__version__}')
         
         with urllib.request.urlopen(req, timeout=10) as response:
             data = response.read()
             return json.loads(data.decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        log(f"HTTP Error: {e.code} - {e.reason}")
-        return None
-    except urllib.error.URLError as e:
-        log(f"URL Error: {e.reason}")
-        return None
-    except Exception as e:
-        log(f"Error making request: {str(e)}")
+    except:
         return None
 
 
@@ -68,31 +60,14 @@ def search_subtitles(item):
     Returns:
         List of subtitle results
     """
-    log("=" * 60)
-    log("STARTING SUBTITLE SEARCH")
-    log(f"Item data222222: {item}")
-    
-    # Log ALL available VideoPlayer InfoLabels for debugging
-    log("=" * 60)
-    log("ALL AVAILABLE VIDEOPLAYER INFOLABELS:")
-    available_infolabels = [
-    'VideoPlayer.Title', 'VideoPlayer.OriginalTitle', 'VideoPlayer.Year', 'VideoPlayer.Country',
-    'VideoPlayer.Duration', 'VideoPlayer.IMDBNumber', 'VideoPlayer.UniqueID(imdb)', 'VideoPlayer.UniqueID(tmdb)', 'VideoPlayer.UniqueID(tvdb)',
-    'VideoPlayer.VideoResolution', 'VideoPlayer.FileName', 'VideoPlayer.FileExtension',
-    ]
-    
-    for label in available_infolabels:
-        value = xbmc.getInfoLabel(label)
-        if value:  # Solo mostrar los que tienen valor
-            log(f"  {label}: {value}")
-    log("=" * 60)
-    
     subtitles_list = []
     
+    # Log datos relevantes
+    log("=" * 60)
+
     title = item.get('title', '')
-    log(f"Extracted title: '{title}'")
+    log(f"Title: '{title}'")
     
-    # Log additional item data
     imdb_id = item.get('imdb', '')
     log(f"IMDb ID: '{imdb_id}'")
     
@@ -101,41 +76,28 @@ def search_subtitles(item):
 
     
     if not title:
-        log("ERROR: No title found, cannot search")
         return subtitles_list
     
     # Codificar el nombre para la URL
     encoded_title = urllib.parse.quote(title)
-    log(f"Encoded title: '{encoded_title}'")
     
     # Construir la URL de búsqueda de títulos
     search_url = f"{SUBTIS_API_BASE}/titles/search/{encoded_title}"
-    log(f"Search URL: {search_url}")
     
     # Hacer la petición a la API
-    log("Making API request...")
     response_data = make_request(search_url)
-    log(f"API response received: {response_data is not None}")
     
     if not response_data:
-        log("ERROR: No response from API")
         return subtitles_list
-    
-    total_results = response_data.get('total', 0)
-    log(f"API returned {total_results} total results")
     
     # Obtener los resultados del JSON
     results = response_data.get('results', [])
-    log(f"Results array length: {len(results)}")
     
     if not results:
-        log("WARNING: No results in response array")
         return subtitles_list
     
     # Procesar cada resultado
     for idx, result in enumerate(results):
-        log(f"Processing result {idx + 1}/{len(results)}")
-        
         subtitle_id = result.get('id')
         title_name = result.get('title_name', 'Unknown')
         title_name_spa = result.get('title_name_spa', title_name)
@@ -143,18 +105,9 @@ def search_subtitles(item):
         rating = result.get('rating', 0)
         title_type = result.get('type', 'movie')
         
-        log(f"  - ID: {subtitle_id}")
-        log(f"  - Title: {title_name}")
-        log(f"  - Title (Spanish): {title_name_spa}")
-        log(f"  - Year: {year}")
-        log(f"  - Rating: {rating}")
-        log(f"  - Type: {title_type}")
-        
         # Usar el nombre en español si está disponible
         display_name = title_name_spa if title_name_spa else title_name
         filename = f"{display_name} ({year})"
-        
-        log(f"Creating ListItem with filename: {filename}")
         
         # Crear el ListItem para Kodi
         listitem = xbmcgui.ListItem(
@@ -175,10 +128,7 @@ def search_subtitles(item):
         url = f"plugin://{__scriptid__}/?action=download&id={subtitle_id}"
         
         subtitles_list.append((url, listitem, False))
-        log(f"Subtitle {idx + 1} added to list successfully")
     
-    log(f"SEARCH COMPLETE: Returning {len(subtitles_list)} subtitles")
-    log("=" * 60)
     return subtitles_list
 
 
@@ -213,8 +163,6 @@ def download_subtitle(subtitle_id):
     Returns:
         List with the path to the downloaded subtitle file
     """
-    log(f"Downloading subtitle with ID: {subtitle_id}")
-    
     # Crear el directorio temporal si no existe
     if not xbmcvfs.exists(__temp__):
         xbmcvfs.mkdirs(__temp__)
@@ -223,7 +171,6 @@ def download_subtitle(subtitle_id):
     download_url = f"{SUBTIS_API_BASE}/subtitle/link/{subtitle_id}"
     
     try:
-        log(f"Downloading from: {download_url}")
         req = urllib.request.Request(download_url)
         req.add_header('User-Agent', f'Kodi Subtis Addon/{__version__}')
         
@@ -236,11 +183,9 @@ def download_subtitle(subtitle_id):
         with open(subtitle_path, 'w', encoding='utf-8') as f:
             f.write(subtitle_content)
         
-        log(f"Subtitle saved to: {subtitle_path}")
         return [subtitle_path]
         
     except Exception as e:
-        log(f"Error downloading subtitle: {str(e)}")
         return []
 
 
@@ -259,14 +204,7 @@ def main():
     """Main entry point for the addon"""
     params = get_params()
     
-    log("=" * 80)
-    log(f"ADDON STARTED - Version: {__version__}")
-    log(f"sys.argv: {sys.argv}")
-    log(f"Parsed params: {params}")
-    log("=" * 80)
-    
     action = params.get('action')
-    log(f"Action requested: {action}")
     
     if action == 'search':
         # Obtener información del video actual
@@ -298,24 +236,11 @@ def main():
         if item['title'] == "":
             item['title'] = xbmc.getInfoLabel("VideoPlayer.Title")
         
-        log("Video Information:")
-        log(f"  - Title: {item['title']}")
-        log(f"  - Year: {item['year']}")
-        log(f"  - Season: {item['season']}")
-        log(f"  - Episode: {item['episode']}")
-        log(f"  - TV Show: {item['tvshow']}")
-        log(f"  - File Path: {item['file_original_path']}")
-        log(f"  - IMDb ID: {item.get('imdb', 'N/A')}")
-        log(f"  - File Size: {item.get('file_size', 0)} bytes")
-        
         # Buscar subtítulos
         subtitles_list = search_subtitles(item)
         
-        log(f"Total subtitles found to add: {len(subtitles_list)}")
-        
         # Agregar los resultados a Kodi
-        for idx, subtitle in enumerate(subtitles_list):
-            log(f"Adding subtitle {idx + 1}: {subtitle[0]}")
+        for subtitle in subtitles_list:
             xbmcplugin.addDirectoryItem(
                 handle=int(sys.argv[1]),
                 url=subtitle[0],
@@ -339,22 +264,13 @@ def main():
                     listitem=listitem,
                     isFolder=False
                 )
-        else:
-            log("No subtitle ID provided for download")
     
     elif action == 'manualsearch':
         # Búsqueda manual (el usuario introduce el texto)
         searchstring = params.get('searchstring')
-        log(f"Manual search for: {searchstring}")
         # Implementar búsqueda manual similar a search
     
-    else:
-        log(f"WARNING: Unknown action '{action}'")
-    
-    log("Calling endOfDirectory")
     xbmcplugin.endOfDirectory(int(sys.argv[1]))
-    log("Addon execution complete")
-    log("=" * 80)
 
 
 if __name__ == '__main__':
